@@ -1,14 +1,15 @@
-﻿using Microsoft.Web.WebView2.Core;
-using System;
-using System.Windows.Forms;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-
+using System.Linq;
+using System.Windows.Forms;
 
 namespace ExploradorWeb1
 {
     public partial class Form1 : Form
     {
+        private List<URL> historial = new List<URL>();
+
         public Form1()
         {
             InitializeComponent();
@@ -28,68 +29,74 @@ namespace ExploradorWeb1
                 direccion = "https://www.google.com/search?q=" + Uri.EscapeDataString(direccion);
             }
 
-            webView.CoreWebView2.Navigate((direccion));
+            URL existingUrl = historial.FirstOrDefault(u => u.Address == direccion);
+            if (existingUrl != null)
+            {
+                existingUrl.VisitCount++;
+                existingUrl.LastAccessed = DateTime.Now;
+            }
+            else
+            {
+                historial.Add(new URL(direccion));
+            }
 
-            // Concatenar la nueva dirección con las existentes en el textBoxEscritura
-            textBoxEscritura.AppendText(Environment.NewLine + direccion);
+            // Ordenar el historial por número de visitas descendente
+            historial = historial.OrderByDescending(u => u.VisitCount).ToList();
 
-            // Llama a la función Guardar después de navegar a la página
-            Guardar("historial.txt", direccion);
+            MostrarHistorial();
 
-            webView.CoreWebView2.Navigate((direccion));
+            // Guardar el historial en el archivo de texto
+            GuardarHistorial();
         }
 
-        
-        
-
-
-        private void Guardar(string fileName, string direccion)
+        private void GuardarHistorial()
         {
-            // Abrir el archivo: Write sobreescribe el archivo, Append agrega los datos al final del archivo
-            FileStream stream = new FileStream(fileName, FileMode.Append, FileAccess.Write);
-            // Crear un objeto para escribir el archivo
-            StreamWriter writer = new StreamWriter(stream);
-            // Usar el objeto para escribir al archivo, WriteLine, escribe linea por linea
-            // Write escribe todo en la misma linea. En este ejemplo se hará un dato por cada línea
-            writer.WriteLine(direccion);
-            // Cerrar el archivo
-            writer.Close();
+            using (StreamWriter writer = new StreamWriter("historial.txt"))
+            {
+                foreach (URL url in historial)
+                {
+                    writer.WriteLine($"{url.Address},{url.VisitCount},{url.LastAccessed}");
+                }
+            }
         }
 
-        private void navegarToolStripMenuItem_Click(object sender, EventArgs e)
+        private void MostrarHistorial()
         {
-        }
-
-        private void inicioToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            //webView.GoHome();
-        }
-
-        private void haciaAtrásToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            webView.CoreWebView2.GoBack();
-        }
-
-        private void haciaAdelanteToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            webView.CoreWebView2.GoForward();
+            richTextBox1.Clear();
+            foreach (URL url in historial)
+            {
+                richTextBox1.AppendText($"{url.Address} - Visitas: {url.VisitCount} - Último acceso: {url.LastAccessed}\n");
+            }
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            comboBox1.SelectedIndex = 0;
-            //webView.GoHome();
-           
+            CargarHistorial();
+            MostrarHistorial();
         }
 
-        private void openFileDialog1_FileOk(object sender, System.ComponentModel.CancelEventArgs e)
+        private void CargarHistorial()
         {
-
-        }
-
-        private void richTextBox1_TextChanged(object sender, EventArgs e)
-        {
-
+            string fileName = "historial.txt";
+            if (File.Exists(fileName))
+            {
+                historial.Clear();
+                using (StreamReader reader = new StreamReader(fileName))
+                {
+                    string line;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        string[] parts = line.Split(',');
+                        if (parts.Length >= 3)
+                        {
+                            string address = parts[0];
+                            int visitCount = int.Parse(parts[1]);
+                            DateTime lastAccessed = DateTime.Parse(parts[2]);
+                            historial.Add(new URL(address, visitCount, lastAccessed));
+                        }
+                    }
+                }
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -104,37 +111,62 @@ namespace ExploradorWeb1
             //Muestra la ventana para abrir el archivo y verifica que si se pueda abrir
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
-
                 //Guardamos en una variable el nombre del archivo que abrimos
                 string fileName = openFileDialog1.FileName;
 
                 //Abrimos el archivo, en este caso lo abrimos para lectura
-                FileStream stream = new FileStream(fileName, FileMode.Open, FileAccess.Read);
-                StreamReader reader = new StreamReader(stream);
-
-                //Un ciclo para leer el archivo hasta el final del archivo
-                //Lo leído se va guardando en un control richTextBox
-                while (reader.Peek() > -1)
-                //Esta linea envía el texto leído a un control richTextBox, se puede cambiar para que
-                //lo muestre en otro control por ejemplo un combobox
+                using (FileStream stream = new FileStream(fileName, FileMode.Open, FileAccess.Read))
                 {
-                    richTextBox1.AppendText(reader.ReadLine());
+                    using (StreamReader reader = new StreamReader(stream))
+                    {
+                        //Limpiamos el historial existente antes de cargar el nuevo
+                        historial.Clear();
+
+                        //Un ciclo para leer el archivo hasta el final del archivo
+                        //Lo leído se va guardando en un control richTextBox
+                        while (!reader.EndOfStream)
+                        {
+                            string line = reader.ReadLine();
+                            string[] parts = line.Split(',');
+                            if (parts.Length >= 3)
+                            {
+                                string address = parts[0];
+                                int visitCount = int.Parse(parts[1]);
+                                DateTime lastAccessed = DateTime.Parse(parts[2]);
+                                historial.Add(new URL(address, visitCount, lastAccessed));
+                            }
+                        }
+                    }
                 }
-                //Cerrar el archivo, esta linea es importante porque sino despues de correr varias veces el programa daría error de que el archivo quedó abierto muchas veces. Entonces es necesario cerrarlo despues de terminar de leerlo.
-                reader.Close();
             }
+
+            MostrarHistorial();
         }
 
         private void button2_Click(object sender, EventArgs e)
         {
-            Guardar(@"C:\Users\Illescas\Desktop\historial.txt", textBoxEscritura.Text);
+            GuardarHistorial();
+        }
+    }
+
+    public class URL
+    {
+        public string Address { get; set; }
+        public int VisitCount { get; set; }
+        public DateTime LastAccessed { get; set; }
+
+        public URL(string address)
+        {
+            Address = address;
+            VisitCount = 1;
+            LastAccessed = DateTime.Now;
         }
 
-        private void textBoxEscritura_TextChanged(object sender, EventArgs e)
+        public URL(string address, int visitCount, DateTime lastAccessed)
         {
-
+            Address = address;
+            VisitCount = visitCount;
+            LastAccessed = lastAccessed;
         }
     }
 }
-
-
