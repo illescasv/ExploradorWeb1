@@ -3,29 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
-namespace ExploradorWeb1
+namespace explorador_web
 {
-    public class HistorialURL
+    class URL
     {
-        public string Address { get; set; }
-        public int VisitCount { get; set; }
-        public DateTime LastAccessed { get; set; }
+        string pagina;
+        int veces;
+        DateTime fecha;
 
-        public HistorialURL(string address)
-        {
-            Address = address;
-            VisitCount = 1;
-            LastAccessed = DateTime.Now;
-        }
-
-        public HistorialURL(string address, int visitCount, DateTime lastAccessed)
-        {
-            Address = address;
-            VisitCount = visitCount;
-            LastAccessed = lastAccessed;
-        }
+        public string Pagina { get => pagina; set => pagina = value; }
+        public int Veces { get => veces; set => veces = value; }
+        public DateTime Fecha { get => fecha; set => fecha = value; }
     }
-
 }

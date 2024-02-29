@@ -1,172 +1,127 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
+using System.IO;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using System.Security.Policy;
 
-namespace ExploradorWeb1
+namespace explorador_web
 {
     public partial class Form1 : Form
     {
-        private List<URL> historial = new List<URL>();
-
+        List<URL> urls = new List<URL>();
         public Form1()
         {
             InitializeComponent();
+            
+            this.Resize += new System.EventHandler(this.Form_Resize);
+        }
+        private void Guardar(string fileName)
+        {
+            FileStream stream = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.Write);
+            StreamWriter writer = new StreamWriter(stream);
+
+            foreach (var url in urls)
+            {
+                writer.WriteLine(url.Pagina);
+                writer.WriteLine(url.Veces);
+                writer.WriteLine(url.Fecha);
+            }
+            writer.Close();
+        }
+        private void Form_Resize(object sender, EventArgs e)
+        {
+            webView.Size = this.ClientSize - new System.Drawing.Size(webView.Location);
+            button1.Left = this.ClientSize.Width - button1.Width;
+            comboBox1.Width = button1.Left - comboBox1.Left;
         }
 
-        private void Botonlr_Click(object sender, EventArgs e)
+        private void buttonIr_Click(object sender, EventArgs e)
         {
-            string direccion = comboBox1.Text.ToString();
-
-            if (!direccion.Contains("http://") && !direccion.Contains("https://"))
+            string url = comboBox1.Text.ToString();
+            if (url.Contains(".") || url.Contains("/") || url.Contains(":"))
             {
-                direccion = "https://" + direccion;
-            }
-
-            if (!direccion.Contains("."))
-            {
-                direccion = "https://www.google.com/search?q=" + Uri.EscapeDataString(direccion);
-            }
-
-            URL existingUrl = historial.FirstOrDefault(u => u.Address == direccion);
-            if (existingUrl != null)
-            {
-                existingUrl.VisitCount++;
-                existingUrl.LastAccessed = DateTime.Now;
+                if (url.Contains("https"))
+                    webView.CoreWebView2.Navigate(url);
+                else
+                {
+                    url = "https://" + url;
+                    webView.CoreWebView2.Navigate(url);
+                }
             }
             else
             {
-                historial.Add(new URL(direccion));
-            }
-
-            // Ordenar el historial por número de visitas descendente
-            historial = historial.OrderByDescending(u => u.VisitCount).ToList();
-
-            MostrarHistorial();
-
-            // Guardar el historial en el archivo de texto
-            GuardarHistorial();
-        }
-
-        private void GuardarHistorial()
-        {
-            using (StreamWriter writer = new StreamWriter("historial.txt"))
-            {
-                foreach (URL url in historial)
+                if (!string.IsNullOrEmpty(url))
                 {
-                    writer.WriteLine($"{url.Address},{url.VisitCount},{url.LastAccessed}");
+                    url = "https://www.google.com/search?q=" + url;
+                    webView.CoreWebView2.Navigate(url);
                 }
             }
+
+            URL urlExiste = urls.Find(u => u.Pagina == url);
+            if (urlExiste == null)
+            {
+                URL urlNueva = new URL();
+                urlNueva.Pagina = url;
+                urlNueva.Veces = 1;
+                urlNueva.Fecha = DateTime.Now;
+                urls.Add(urlNueva);
+                Guardar("historial.txt");
+                webView.CoreWebView2.Navigate(url);
+            }
+            else
+            {
+                urlExiste.Veces++;
+                urlExiste.Fecha = DateTime.Now;
+                Guardar("historial.txt");
+                webView.CoreWebView2.Navigate(urlExiste.Pagina);
+            }
+
+
         }
 
-        private void MostrarHistorial()
+
+        private void haciaAtrásToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            richTextBox1.Clear();
-            foreach (URL url in historial)
-            {
-                richTextBox1.AppendText($"{url.Address} - Visitas: {url.VisitCount} - Último acceso: {url.LastAccessed}\n");
-            }
+            webView.CoreWebView2.GoBack();
+        }
+
+        private void haciaAdelanteToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            webView.CoreWebView2.GoForward();
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            CargarHistorial();
-            MostrarHistorial();
-        }
+            string fileName = @"C:\Users\Illescas\Desktop\historial.txt";
 
-        private void CargarHistorial()
-        {
-            string fileName = "historial.txt";
-            if (File.Exists(fileName))
+            FileStream stream = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+            StreamReader reader = new StreamReader(stream);
+            while (reader.Peek() > -1)
+
             {
-                historial.Clear();
-                using (StreamReader reader = new StreamReader(fileName))
-                {
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        string[] parts = line.Split(',');
-                        if (parts.Length >= 3)
-                        {
-                            string address = parts[0];
-                            int visitCount = int.Parse(parts[1]);
-                            DateTime lastAccessed = DateTime.Parse(parts[2]);
-                            historial.Add(new URL(address, visitCount, lastAccessed));
-                        }
-                    }
-                }
+                URL url = new URL();
+                url.Pagina = reader.ReadLine();
+                url.Veces = Convert.ToInt32(reader.ReadLine());
+                url.Fecha = Convert.ToDateTime(reader.ReadLine());
+                urls.Add(url);
             }
+            reader.Close();
+            comboBox1.DisplayMember = "pagina";
+            comboBox1.DataSource = urls;
+            comboBox1.Refresh();
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void menuStrip1_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
         {
-            OpenFileDialog openFileDialog1 = new OpenFileDialog();
 
-            //Directorio en donde se va a iniciar la busqueda
-            openFileDialog1.InitialDirectory = "c:\\";
-            //Tipos de archivos que se van a buscar, en este caso archivos de texto con extensión .txt
-            openFileDialog1.Filter = "txt files (*.txt)|*.txt|All files (*.*)|*.*";
-
-            //Muestra la ventana para abrir el archivo y verifica que si se pueda abrir
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
-            {
-                //Guardamos en una variable el nombre del archivo que abrimos
-                string fileName = openFileDialog1.FileName;
-
-                //Abrimos el archivo, en este caso lo abrimos para lectura
-                using (FileStream stream = new FileStream(fileName, FileMode.Open, FileAccess.Read))
-                {
-                    using (StreamReader reader = new StreamReader(stream))
-                    {
-                        //Limpiamos el historial existente antes de cargar el nuevo
-                        historial.Clear();
-
-                        //Un ciclo para leer el archivo hasta el final del archivo
-                        //Lo leído se va guardando en un control richTextBox
-                        while (!reader.EndOfStream)
-                        {
-                            string line = reader.ReadLine();
-                            string[] parts = line.Split(',');
-                            if (parts.Length >= 3)
-                            {
-                                string address = parts[0];
-                                int visitCount = int.Parse(parts[1]);
-                                DateTime lastAccessed = DateTime.Parse(parts[2]);
-                                historial.Add(new URL(address, visitCount, lastAccessed));
-                            }
-                        }
-                    }
-                }
-            }
-
-            MostrarHistorial();
-        }
-
-        private void button2_Click(object sender, EventArgs e)
-        {
-            GuardarHistorial();
-        }
-    }
-
-    public class URL
-    {
-        public string Address { get; set; }
-        public int VisitCount { get; set; }
-        public DateTime LastAccessed { get; set; }
-
-        public URL(string address)
-        {
-            Address = address;
-            VisitCount = 1;
-            LastAccessed = DateTime.Now;
-        }
-
-        public URL(string address, int visitCount, DateTime lastAccessed)
-        {
-            Address = address;
-            VisitCount = visitCount;
-            LastAccessed = lastAccessed;
         }
     }
 }

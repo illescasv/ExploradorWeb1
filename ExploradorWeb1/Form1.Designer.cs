@@ -1,4 +1,6 @@
-﻿namespace ExploradorWeb1
+﻿using System;
+
+namespace explorador_web
 {
     partial class Form1
     {
@@ -132,31 +134,13 @@
             this.richTextBox1.Text = "";
             this.richTextBox1.TextChanged += new System.EventHandler(this.richTextBox1_TextChanged);
             // 
-            // openFileDialog1
-            // 
-            this.openFileDialog1.FileName = "openFileDialog1";
-            this.openFileDialog1.FileOk += new System.ComponentModel.CancelEventHandler(this.openFileDialog1_FileOk);
-            // 
+           
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(499, 31);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 5;
-            this.button1.Text = "button1";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
-            // 
+             
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(645, 31);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(75, 23);
-            this.button2.TabIndex = 6;
-            this.button2.Text = "button2";
-            this.button2.UseVisualStyleBackColor = true;
-            this.button2.Click += new System.EventHandler(this.button2_Click);
-            // 
+            
             // textBoxEscritura
             // 
             this.textBoxEscritura.Location = new System.Drawing.Point(633, 74);
@@ -187,6 +171,26 @@
             this.ResumeLayout(false);
             this.PerformLayout();
 
+        }
+
+        private void richTextBox1_TextChanged(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void Botonlr_Click(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void inicioToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void navegarToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
         }
 
         #endregion
